@@ -27,13 +27,15 @@
 
 import UIKit
 import MSAL
+import AuthenticationServices
 
 /// 😃 A View Controller that will respond to the events of the Storyboard.
 
+@available(iOS 12.0, *)
 class ViewController: UIViewController, UITextFieldDelegate, URLSessionDelegate {
     
     // Update the below to your client ID you received in the portal. The below is for running the demo only
-    let kClientID = "66855f8a-60cd-445e-a9bb-8cd8eadbd3fa"
+    let kClientID = "9b9af1a1-09e8-4c00-b224-f95d21eccd04"
     
     // Additional variables for Auth and Graph API
     let kGraphURI = "https://graph.microsoft.com/v1.0/me/"
@@ -42,19 +44,20 @@ class ViewController: UIViewController, UITextFieldDelegate, URLSessionDelegate 
     
     var accessToken = String()
     var applicationContext : MSALPublicClientApplication?
-
+    
     var loggingText: UITextView!
     var signOutButton: UIButton!
     var callGraphButton: UIButton!
-
+    var webAuthSession: ASWebAuthenticationSession? = nil
+    
     /**
-        Setup public client application in viewDidLoad
-    */
-
+     Setup public client application in viewDidLoad
+     */
+    
     override func viewDidLoad() {
-
+        
         super.viewDidLoad()
-
+        
         initUI()
         
         do {
@@ -63,9 +66,9 @@ class ViewController: UIViewController, UITextFieldDelegate, URLSessionDelegate 
             self.loggingText.text = "Unable to create Application Context \(error)"
         }
     }
-
+    
     override func viewWillAppear(_ animated: Bool) {
-
+        
         super.viewWillAppear(animated)
         signOutButton.isEnabled = !self.accessToken.isEmpty
     }
@@ -74,6 +77,8 @@ class ViewController: UIViewController, UITextFieldDelegate, URLSessionDelegate 
 
 // MARK: Initialization
 
+
+@available(iOS 12.0, *)
 extension ViewController {
     
     /**
@@ -93,7 +98,8 @@ extension ViewController {
      not interested in the specific error pass in nil.
      */
     func initMSAL() throws {
-        
+        let kRedirectURI = "msal" + kClientID + "://auth"
+
         guard let authorityURL = URL(string: kAuthority) else {
             self.loggingText.text = "Unable to create authority URL"
             return
@@ -101,7 +107,7 @@ extension ViewController {
         
         let authority = try MSALAADAuthority(url: authorityURL)
         
-        let msalConfiguration = MSALPublicClientApplicationConfig(clientId: kClientID, redirectUri: nil, authority: authority)
+        let msalConfiguration = MSALPublicClientApplicationConfig(clientId: kClientID, redirectUri: kRedirectURI, authority: authority)
         self.applicationContext = try MSALPublicClientApplication(configuration: msalConfiguration)
     }
 }
@@ -109,6 +115,7 @@ extension ViewController {
 
 // MARK: Acquiring and using token
 
+@available(iOS 12.0, *)
 extension ViewController {
     
     /**
@@ -242,12 +249,13 @@ extension ViewController {
             
             }.resume()
     }
-
+    
 }
 
 
 // MARK: Get account and removing cache
 
+@available(iOS 12.0, *)
 extension ViewController {
     func currentAccount() -> MSALAccount? {
         
@@ -277,7 +285,44 @@ extension ViewController {
      to sign out a user from this application.
      */
     @objc func signOut(_ sender: UIButton) {
+        signOutLocal(sender)
+        signOutRemote(sender)
+    }
+    
+    func signOutRemote(_ sender: UIButton) {
+        let logoutUrlScheme = "msal" + kClientID + "://logout"
+
+        //let kLogoutURL = "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=https://spiegel.de"
+        //let kLogoutURL = "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=" + logoutUrlScheme
+        let kLogoutURL = "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=https://mwa-redirect.azurewebsites.net/?clientID=" + kClientID
         
+        guard let logoutURL = URL(string: kLogoutURL) else {
+            self.updateLogging(text: "Unable to create logout URL")
+            return
+        }
+        
+        
+        do {
+            self.webAuthSession = ASWebAuthenticationSession.init(url: logoutURL, callbackURLScheme: logoutUrlScheme, completionHandler: { (callBack:URL?, error:Error?) in
+                
+                NSLog("Entered completition handler")
+                
+                // handle auth response
+                guard error == nil else {
+                    self.updateLogging(text: "Received error signing account out: \(error.debugDescription)")
+                    return
+                }
+                
+                self.updateLogging(text: "Logged out locally and remotely")
+            })
+            // Start the session
+            self.webAuthSession?.start()
+        }
+        
+    }
+    
+    
+    func signOutLocal(_ sender: UIButton) {
         guard let applicationContext = self.applicationContext else { return }
         
         guard let account = self.currentAccount() else { return }
@@ -304,6 +349,7 @@ extension ViewController {
 
 
 // MARK: UI Helpers
+@available(iOS 12.0, *)
 extension ViewController {
     
     func initUI() {
