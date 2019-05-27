@@ -294,7 +294,8 @@ extension ViewController {
 
         //let kLogoutURL = "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=https://spiegel.de"
         //let kLogoutURL = "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=" + logoutUrlScheme
-        let kLogoutURL = "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=https://mwa-redirect.azurewebsites.net/?clientID=" + kClientID
+        //let kLogoutURL = "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=https://mwa-redirect.azurewebsites.net/?clientID=" + kClientID
+        let kLogoutURL = "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=https://mw8er.github.io/redirect.html?clientID=" + kClientID
         
         guard let logoutURL = URL(string: kLogoutURL) else {
             self.updateLogging(text: "Unable to create logout URL")
